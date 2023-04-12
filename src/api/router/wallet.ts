@@ -4,9 +4,9 @@ import Ajv from 'ajv';
 import {Database} from 'sqlite3';
 import HttpStatusCodes from 'http-status-codes';
 
-import {connector, disconnector} from '../../db/conn';
 import Blockchain, {Transaction, Wallet} from "../../blockchain";
-import {getWalletByPassphrase, listWallets, registerWallet} from '../../db/wallet';
+import {connector, disconnector} from '../../db/conn';
+import {getWalletByPassphrase, registerWallet} from '../../db/wallet';
 
 interface CreateWalletRequest extends Request {
   body: {
@@ -102,13 +102,14 @@ export const createTransaction = (bc: Blockchain) => async (req: CreateTransacti
     res.status(HttpStatusCodes.CREATED).json(tx);
   } catch (err) {
     console.log(err);
-    res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json(err);
+    res.status(HttpStatusCodes.BAD_REQUEST).json({
+      error: (err as Error).message
+    });
   }
 }
 
 export default function registerWalletRouter(bc: Blockchain): IRouter {
   router.post('/', createWallet);
-  router.get('/', listWallets);
   router.post('/:passphrase/transactions', createTransaction(bc));
 
   return router;

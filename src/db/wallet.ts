@@ -21,6 +21,7 @@ export const getWalletByPassphrase = (db: Database, passphrase: string): Promise
     const selectUniqueWalletSQL = "SELECT * FROM Wallets WHERE Passphrase = ?";
     db.get(selectUniqueWalletSQL, [passphrase], (err, row) => {
       if (err) return reject(err);
+      if (!row) return reject(new Error('address not found'));
       resolve(new Wallet(row.Owner, row.PrivateKey, row.PublicKey));
     });
   });
