@@ -29,4 +29,33 @@ yarn start
 
 ## API's resources
 
+### Blockchain entity resources
 
+**Describe all blockchain**
+
+```bash
+curl --location 'localhost:3000/blockchain'
+```
+
+### Wallet entity resources
+
+**Create a wallet**
+
+```bash
+curl --location 'localhost:3000/wallets' \
+--header 'Content-Type: application/json' \
+--data '{
+    "owner": "<owner-name>"
+}'
+```
+
+**Create a transaction to another wallet**
+
+```bash
+curl --location 'localhost:3000/wallets/<passphrase>/transactions' \
+--header 'Content-Type: application/json' \
+--data '{
+    "address": "<target-wallet-address>",
+    "amount": 10
+}'
+```
