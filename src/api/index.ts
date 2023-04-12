@@ -1,19 +1,24 @@
 import express, { Application } from 'express';
 
 import Blockchain from '../blockchain';
-import registerRouter from './router';
+import { registerRouter } from './router';
+ 
+export default class APIProvider {
+  private _blockchain: Blockchain;
 
-const app: Application = express();
+  constructor(blockchain: Blockchain) {
+    this._blockchain = blockchain;
+  }
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+  public createServer(): Application {
+    const app: Application = express();
 
-const guicoin = new Blockchain();
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
 
-app.use(registerRouter(guicoin));
+    app.use(registerRouter(this._blockchain));
 
-const port: number = 3000;
+    return app;
+  }
+}
 
-app.listen(port, () => {
-  console.log("Running Blockchain...");
-});

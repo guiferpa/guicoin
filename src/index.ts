@@ -1,19 +1,14 @@
-import Blockchain, { Wallet } from "./blockchain";
+import APIProvider from "./api";
+import Blockchain from "./blockchain";
 
-(async function () {
-  const guicoin = new Blockchain();
+const guicoin = new Blockchain();
+const provider = new APIProvider(guicoin);
 
-  const guiferpa: Wallet = new Wallet("guiferpa");
+const server = provider.createServer();
 
-  const nana: Wallet = new Wallet("nana");
+const port: number = 3000;
 
-  guicoin.minePendingTransactions(guiferpa.getPublicKey());
+server.listen(port, () => {
+  console.log(`Running Blockchain's API on port: ${port}`);
+});
 
-  guicoin.minePendingTransactions(guiferpa.getPublicKey());
-
-  guicoin.addTransaction(guiferpa.createSignedTransaction(100, nana.getPublicKey()));
-
-  console.log(guicoin.getBalanceByPublicKey(guiferpa.getPublicKey()));
-
-  // console.log(JSON.stringify(guicoin, null, 4));
-})();
