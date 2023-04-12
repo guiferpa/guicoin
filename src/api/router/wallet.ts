@@ -1,12 +1,18 @@
-import crypto, { pseudoRandomBytes } from 'crypto';
-import express, { IRouter, Request, Response } from "express";
+import crypto from 'crypto';
+import express, {IRouter, Request, Response} from "express";
 import Ajv from 'ajv';
-import { Database } from 'sqlite3';
+import {Database} from 'sqlite3';
 import HttpStatusCodes from 'http-status-codes';
 
-import { connector, disconnector } from '../../db/conn';
-import Blockchain, { Transaction, Wallet } from "../../blockchain";
-import { getWalletByPassphrase, listWallets, registerWallet } from '../../db/wallet';
+import {connector, disconnector} from '../../db/conn';
+import Blockchain, {Transaction, Wallet} from "../../blockchain";
+import {getWalletByPassphrase, listWallets, registerWallet} from '../../db/wallet';
+
+interface CreateWalletRequest extends Request {
+  body: {
+    owner: string;
+  };
+}
 
 const ajv = new Ajv();
 
@@ -24,11 +30,7 @@ const createWalletSchema = {
   additionalProperties: false
 }
 
-interface CreateWalletRequestBody {
-  owner: string;
-}
-
-export const createWallet = async (req: Request, res: Response) => {
+export const createWallet = async (req: CreateWalletRequest, res: Response) => {
   const validate = ajv.compile(createWalletSchema);
   if (!validate(req.body)) {
     res.status(HttpStatusCodes.BAD_REQUEST).json(validate.errors);
@@ -36,21 +38,21 @@ export const createWallet = async (req: Request, res: Response) => {
   }
 
   try {
-    const { owner } = req.body as CreateWalletRequestBody;
-  
+    const {owner} = req.body;
+
     const db: Database = await connector();
-  
+
     const wallet: Wallet = new Wallet(owner);
     await wallet.generateKeyPair();
 
     const passphrase: string = crypto.randomBytes(64).toString('hex');
-  
+
     await registerWallet(db, wallet, passphrase);
 
     await disconnector(db);
-  
-    res.status(HttpStatusCodes.CREATED).json({ wallet, passphrase });
-  } catch(err) {
+
+    res.status(HttpStatusCodes.CREATED).json({wallet, passphrase});
+  } catch (err) {
     console.log(err);
     res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json(err);
   }
@@ -70,12 +72,14 @@ const createTransactionByWalletSchema = {
   additionalProperties: false
 }
 
-interface CreateTransactionByWalletRequestBody {
-  address: string; // Receiver wallet
-  amount: number;
+interface CreateTransactionRequest extends Request {
+  body: {
+    address: string; // Receiver wallet
+    amount: number;
+  }
 }
 
-export const createTransaction = (bc: Blockchain) => async (req: Request, res: Response) => {
+export const createTransaction = (bc: Blockchain) => async (req: CreateTransactionRequest, res: Response) => {
   const validate = ajv.compile(createTransactionByWalletSchema);
   if (!validate(req.body)) {
     res.status(HttpStatusCodes.BAD_REQUEST).json(validate.errors);
@@ -83,20 +87,20 @@ export const createTransaction = (bc: Blockchain) => async (req: Request, res: R
   }
 
   try {
-    const { passphrase } = req.params;
-    const { address, amount } = req.body as CreateTransactionByWalletRequestBody;
+    const {passphrase} = req.params;
+    const {address, amount} = req.body;
 
     const db: Database = await connector();
 
     const wallet: Wallet = await getWalletByPassphrase(db, passphrase);
 
-    const tx: Transaction = new Transaction(wallet.getPublicKey(), address, amount);
-    await tx.sign(wallet.getPrivateKey());
+    const tx: Transaction = new Transaction(wallet.getPublicKey(), address as string, amount as number);
+    tx.sign(wallet.getPrivateKey());
 
     bc.addTransaction(tx);
-  
+
     res.status(HttpStatusCodes.CREATED).json(tx);
-  } catch(err) {
+  } catch (err) {
     console.log(err);
     res.status(HttpStatusCodes.INTERNAL_SERVER_ERROR).json(err);
   }
