@@ -1,20 +1,49 @@
+import crypto from 'crypto';
+
+import {Database} from 'sqlite3';
+import {connector, disconnector} from '../db/conn';
+import {registerWallet} from '../db/wallet';
 import Block from './block';
 import Transaction from './transaction';
+import Wallet from './wallet';
 
 class Blockchain {
-  private chain: Block[];
+  private chain: Block[] = [];
   private difficulty: number = 2;
   private pendingTransactions: Transaction[] = [];
-  private miningReward: number = 100;
+  public miningReward: number = 100;
 
-  constructor() {
-    const genesisBlock: Block = this.createGenesisBlock();
-    this.chain = [genesisBlock];
-  }
+  public async generateGenesisBlock(): Promise<Block> {
+    const empt = "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+    const wallet = new Wallet(empt);
+    await wallet.generateKeyPair();
 
-  private createGenesisBlock(): Block {
-    const block: Block = new Block([], Date.now());
+    const tx = new Transaction(empt, wallet.getPublicKey(), this.miningReward);
+    const block: Block = new Block([tx], Date.now());
+
+    const db: Database = await connector();
+
+    await wallet.generateKeyPair();
+
+    const passphrase: string = crypto.randomBytes(64).toString('hex');
+
+    await registerWallet(db, wallet, passphrase);
+
+    await disconnector(db);
+
     block.setHash(block.calculateHash());
+    this.chain = [block];
+    
+    console.log(`
+  [Initial wallet created]
+    Private key: 
+      ${wallet.getPrivateKey()}
+    Public key: 
+      ${wallet.getPublicKey()}
+    Passphrase: 
+      ${passphrase}
+`);
+
     return block;
   }
 
